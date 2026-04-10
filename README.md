@@ -1,22 +1,43 @@
 # Sando Scheduler
 
-A Python tool that sends reminders for planned scheduled events.
+A lightweight Python daemon that monitors a `reminders.json` file and sends Telegram messages at scheduled times. Runs as a systemd service on the host machine. No AI involved — purely a timer and message sender.
 
-## Overview
+## Docs
 
-Sando Scheduler is a lightweight scheduling/reminder system designed to notify you of upcoming events via Telegram or other channels.
+- [`reminder_daemon_spec.md`](./reminder_daemon_spec.md) — Full specification for the daemon: logic, schema, systemd setup, and script skeleton.
 
 ## Structure
 
 ```
 sando-scheduler/
 ├── README.md
+├── reminder_daemon_spec.md   ← start here
 ├── .gitignore
 ├── requirements.txt
 └── scheduler/
     └── __init__.py
 ```
 
-## Setup
+## Quick Start
 
-Coming soon.
+See `reminder_daemon_spec.md` for full details. TL;DR:
+
+1. Set env vars: `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID`, `REMINDERS_FILE`
+2. Install deps: `pip install requests`
+3. Run or deploy as a systemd service
+
+## Key Design
+
+- Polls `reminders.json` every 60s
+- Sends Telegram message when `remind_at <= now` and `sent == false`
+- Marks entry `sent: true` after delivery
+- Prunes entries older than 7 days
+- File-locked reads/writes to avoid race conditions with Benten
+
+## Environment Variables
+
+| Variable | Description |
+|---|---|
+| `TELEGRAM_BOT_TOKEN` | Bot token for the Telegram bot |
+| `TELEGRAM_CHAT_ID` | Target Scheduling chat ID |
+| `REMINDERS_FILE` | Path to `reminders.json` (default: `/home/Schedule/reminders.json`) |
