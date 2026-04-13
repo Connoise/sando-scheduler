@@ -6,7 +6,7 @@ After=network.target
 Type=simple
 User=connoise
 WorkingDirectory=/home/connoise/Schedule
-ExecStart=/usr/bin/python3 /home/connoise/Schedule/reminder_daemon.py
+ExecStart=/home/connoise/sando-scheduler/venv/bin/python3 /home/connoise/Schedule/reminder_daemon.py
 Restart=always
 RestartSec=10
 Environment=TELEGRAM_BOT_TOKEN=8313726439:AAHDDrgV-nGqvhJSam5eNuBu9pLi3ScrdBQ
