@@ -12,7 +12,7 @@ echo "==> Copying daemon script..."
 cp "$REPO_DIR/reminder_daemon.py" "$SCHEDULE_DIR/reminder_daemon.py"
 
 echo "==> Installing dependencies..."
-pip install -r "$REPO_DIR/requirements.txt" --quiet
+pip3 install -r "$REPO_DIR/requirements.txt" --quiet
 
 echo "==> Installing systemd service..."
 sudo cp "$REPO_DIR/reminder-daemon.service" /etc/systemd/system/reminder-daemon.service
