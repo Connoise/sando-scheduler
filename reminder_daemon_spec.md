@@ -16,7 +16,7 @@ Set these in the systemd service file or a `.env` file:
 
 | Variable | Description |
 |---|---|
-| `TELEGRAM_BOT_TOKEN` | Bot token for Benten's Telegram bot |
+| `TELEGRAM_BOT_TOKEN` | Bot token for the scheduling Telegram bot |
 | `TELEGRAM_CHAT_ID` | Chat ID of the "Scheduling" group chat |
 | `REMINDERS_FILE` | Path to `reminders.json` (default: `/home/Schedule/reminders.json`) |
 
@@ -25,19 +25,30 @@ Set these in the systemd service file or a `.env` file:
 ```
 Every 60 seconds:
   1. Read reminders.json
-  2. For each entry where sent == false:
-     a. Parse remind_at as HST datetime
-     b. If remind_at <= now:
-        - Send entry.message to Telegram chat
-        - Set entry.sent = true
-  3. Write updated reminders.json back (only if changes were made)
-  4. Optionally: prune entries where sent == true AND event_date is older than 7 days
+  2. Collect every entry where sent == false AND status == "active"
+     (default when status is missing) AND remind_at <= now
+  3. If 1 entry is due: send its message
+     If 2+ entries are due in the same poll cycle: coalesce them into a
+     single Telegram message with one line per reminder ("Reminders:\n- ...")
+  4. Mark every sent entry sent = true
+  5. Write updated reminders.json back (only if changes were made)
+  6. Prune entries whose event_date is older than 7 days when either
+     sent == true OR status is "cancelled"/"deleted". Cancelled and
+     deleted events remain in the file until they age out — their
+     permanent history lives in changelog.csv.
+  7. Weekly digest: if today is Sunday and current time >= 8:00 AM HST and
+     we have not already sent today's digest (tracked in
+     reminder_daemon_state.json), build a summary of all events with
+     event_date in [today, today+6] and status == "active" from
+     reminders.json and send it. Cancelled and deleted events are
+     excluded. If no active events fall in that range, send a
+     "no events scheduled for the week" message.
 ```
 
 ## Key Design Notes
 
 - **Polling interval: 60 seconds.** This is cheap (no API calls, just file reads) and accurate enough for scheduling purposes. A reminder set for 1:00 PM will fire between 1:00 PM and 1:01 PM.
-- **File locking**: Use a simple file lock (`fcntl.flock` or a `.lock` file) to avoid race conditions if Benten writes to `reminders.json` at the same moment the daemon reads it.
+- **File locking**: Use a simple file lock (`fcntl.flock` or a `.lock` file) to avoid race conditions if the host agent writes to `reminders.json` at the same moment the daemon reads it.
 - **Timezone**: All `remind_at` values are in HST (UTC-10). Parse accordingly.
 - **Error handling**: If `reminders.json` is malformed or missing, log the error and retry on next cycle. Do not crash.
 - **Logging**: Write to `/home/Schedule/reminder_daemon.log` with timestamps. Log each reminder sent and any errors.
@@ -48,7 +59,7 @@ Create `/etc/systemd/system/reminder-daemon.service`:
 
 ```ini
 [Unit]
-Description=Benten Schedule Reminder Daemon
+Description=Sando Schedule Reminder Daemon
 After=network.target
 
 [Service]
@@ -197,10 +208,10 @@ if __name__ == "__main__":
     main()
 ```
 
-## Notes for Benten (referenced in SOUL.md)
+## Notes for the Host Agent (see `scheduler_instructions.md`)
 
-- Benten writes to `reminders.json` — this script reads it.
-- Benten sets `sent: false` — this script sets `sent: true` after delivery.
-- Benten removes entries on cancellation — this script prunes old delivered reminders after 7 days.
-- This script never modifies the spreadsheet or changelog — that is Benten's domain.
-- If this script is offline, reminders will fire the next time it starts (any past-due unsent reminders will be sent immediately on restart).
+- The host agent writes to `reminders.json` — this script reads it.
+- The host agent sets `sent: false` and `status: "active"` on new entries — this script sets `sent: true` after delivery and skips entries whose `status` is not `"active"`.
+- On cancellation the host agent sets `status: "cancelled"` (not removal); on deletion it sets `status: "deleted"`. This script prunes those entries 7 days after the event date — permanent history lives in `changelog.csv`.
+- This script never modifies the spreadsheet or changelog — those are the host agent's domain.
+- If this script is offline, reminders will fire the next time it starts (any past-due unsent active reminders will be sent immediately on restart, coalesced into one message).
