@@ -1,0 +1,19 @@
+[Unit]
+Description=Sando Scheduler Web UI
+After=network.target tailscaled.service
+
+[Service]
+Type=simple
+User=connoise
+WorkingDirectory=/home/connoise/Schedule
+# Bind to the Tailscale interface address (set via env so the unit is
+# portable). Falls back to 127.0.0.1 if unset — never bind 0.0.0.0.
+Environment=SCHEDULE_DIR=/home/connoise/Schedule
+Environment=SANDO_WEB_HOST=127.0.0.1
+Environment=SANDO_WEB_PORT=8765
+ExecStart=/usr/bin/python3 -m uvicorn sando_web.app:app --host ${SANDO_WEB_HOST} --port ${SANDO_WEB_PORT}
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target

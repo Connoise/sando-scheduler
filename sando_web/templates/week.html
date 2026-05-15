@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% set day_names = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"] %}
+{% block title %}Week of {{ ctx.start.strftime("%b %-d, %Y") }} — Sando{% endblock %}
+
+{% block topbar %}
+  <nav class="weeknav">
+    <a class="navbtn" href="/week/{{ ctx.prev_start.isoformat() }}" aria-label="Previous week">◀</a>
+    <a class="navbtn today" href="/week/{{ ctx.today.isoformat() }}">Today</a>
+    <a class="navbtn" href="/week/{{ ctx.next_start.isoformat() }}" aria-label="Next week">▶</a>
+  </nav>
+{% endblock %}
+
+{% block content %}
+  <section class="weekhead">
+    <h1>{{ ctx.start.strftime("%b %-d") }} – {{ ctx.end.strftime("%b %-d, %Y") }}</h1>
+    <p class="meta">
+      Sheet: <code>{{ ctx.workbook_month }} / {{ ctx.sheet_name }}</code>
+      {% if not view.workbook_exists %}
+        <span class="warn">· workbook not yet created</span>
+      {% endif %}
+    </p>
+  </section>
+
+  <div class="grid-wrap">
+    <table class="weekgrid" aria-label="Weekly schedule">
+      <thead>
+        <tr>
+          <th class="slot-col" scope="col"><span class="sr-only">Time</span></th>
+          {% for d in week_dates %}
+            <th scope="col" class="dayhead{% if d == ctx.today %} today{% endif %}">
+              <div class="dayname">{{ day_names[loop.index0] }}</div>
+              <div class="daynum">{{ d.day }}</div>
+            </th>
+          {% endfor %}
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in view.rows %}
+          <tr class="slot-row{% if row.slot.minute == 0 %} hour-start{% endif %}">
+            <th scope="row" class="slot-col">
+              {% if row.slot.minute == 0 %}{{ row.label }}{% endif %}
+            </th>
+            {% for cell in row.cells %}
+              <td class="cell{% if cell %} filled{% endif %}">
+                {% for ev in cell %}
+                  <div class="event status-{{ ev.status }}" title="{{ ev.name }} ({{ ev.status }})">
+                    {{ ev.name }}
+                  </div>
+                {% endfor %}
+              </td>
+            {% endfor %}
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+{% endblock %}

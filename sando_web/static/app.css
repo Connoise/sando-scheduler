@@ -1,0 +1,131 @@
+:root {
+  --bg: #fafafa;
+  --fg: #111;
+  --muted: #666;
+  --border: #ddd;
+  --hour-border: #bbb;
+  --today-bg: #fff5d6;
+  --event-bg: #e6f0ff;
+  --event-fg: #0b3a82;
+  --warn: #b35900;
+  --link: #0b58c2;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #121212;
+    --fg: #f0f0f0;
+    --muted: #9aa0a6;
+    --border: #2a2a2a;
+    --hour-border: #444;
+    --today-bg: #3a2f00;
+    --event-bg: #173763;
+    --event-fg: #d6e6ff;
+    --link: #6aaaff;
+  }
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+body {
+  background: var(--bg);
+  color: var(--fg);
+  font: 15px/1.35 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  -webkit-text-size-adjust: 100%;
+}
+
+a { color: var(--link); text-decoration: none; }
+
+.sr-only {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0;
+}
+
+.topbar {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border);
+  position: sticky; top: 0;
+  background: var(--bg);
+  z-index: 2;
+}
+.brand { font-weight: 700; font-size: 17px; color: var(--fg); }
+
+.weeknav { display: flex; gap: 6px; }
+.navbtn {
+  display: inline-block;
+  min-width: 38px; padding: 6px 10px;
+  border: 1px solid var(--border); border-radius: 8px;
+  background: transparent; color: var(--fg);
+  text-align: center; font-size: 15px;
+}
+.navbtn.today { font-weight: 600; }
+
+.weekhead { padding: 12px 14px 4px; }
+.weekhead h1 { margin: 0; font-size: 18px; }
+.weekhead .meta { color: var(--muted); font-size: 12px; margin: 4px 0 0; }
+.weekhead .warn { color: var(--warn); margin-left: 6px; }
+
+.grid-wrap {
+  overflow: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 0 6px 24px;
+}
+
+.weekgrid {
+  border-collapse: collapse;
+  width: 100%;
+  min-width: 720px; /* keeps columns legible on phones */
+  table-layout: fixed;
+}
+.weekgrid th, .weekgrid td {
+  border: 1px solid var(--border);
+  vertical-align: top;
+  padding: 0;
+}
+.weekgrid thead th {
+  position: sticky; top: 56px; background: var(--bg); z-index: 1;
+  font-weight: 500;
+  padding: 6px 4px;
+  text-align: center;
+}
+.weekgrid .dayhead.today { background: var(--today-bg); }
+.weekgrid .dayname { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; }
+.weekgrid .daynum { font-size: 17px; font-weight: 600; }
+
+.slot-col {
+  width: 64px;
+  font-size: 11px;
+  color: var(--muted);
+  text-align: right;
+  padding: 2px 6px 0 0 !important;
+  background: var(--bg);
+  position: sticky; left: 0; z-index: 1;
+}
+.weekgrid tbody th.slot-col { font-weight: 400; }
+
+.slot-row td { height: 22px; }
+.slot-row.hour-start td,
+.slot-row.hour-start th.slot-col {
+  border-top: 1px solid var(--hour-border);
+}
+
+.cell { padding: 1px 2px; }
+.cell.filled { background: rgba(127,127,127,0.04); }
+.event {
+  background: var(--event-bg);
+  color: var(--event-fg);
+  border-radius: 4px;
+  padding: 2px 4px;
+  margin: 1px 0;
+  font-size: 12px;
+  line-height: 1.2;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.event.status-cancelled,
+.event.status-deleted {
+  text-decoration: line-through;
+  opacity: 0.55;
+}

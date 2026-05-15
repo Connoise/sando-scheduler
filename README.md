@@ -15,14 +15,41 @@ sando-scheduler/
 ├── README.md
 ├── reminder_daemon_spec.md      ← daemon spec
 ├── scheduler_instructions.md    ← scheduling rules for the host agent
-├── mobile_app_plan.md           ← planned mobile UI
+├── mobile_app_plan.md           ← mobile UI design
 ├── reminder_daemon.py
 ├── reminder-daemon.service
+├── sando-web.service            ← systemd unit for the web UI
+├── sando_web/                   ← FastAPI mobile web app (v0.1)
+│   ├── app.py
+│   ├── calendar_utils.py
+│   ├── config.py
+│   ├── schedule_io.py
+│   ├── static/app.css
+│   └── templates/{base,week}.html
+├── tests/
 ├── .gitignore
 ├── requirements.txt
 └── scheduler/
     └── __init__.py
 ```
+
+## Web App (sando_web)
+
+Read-only weekly view of the master schedule, intended to be served over
+Tailscale. See `mobile_app_plan.md` for the full phased plan.
+
+Run locally:
+
+```bash
+pip install -r requirements.txt
+SCHEDULE_DIR=/home/Schedule \
+    python -m uvicorn sando_web.app:app --host 127.0.0.1 --port 8765
+```
+
+Then open `http://127.0.0.1:8765/`. On the host, install
+`sando-web.service` and bind to the Tailnet interface.
+
+Tests: `python -m pytest tests/`.
 
 ## Quick Start
 
