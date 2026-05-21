@@ -24,7 +24,10 @@ from .calendar_utils import (
     WeekContext,
     half_hour_slots,
     parse_slot_label,
+    sheet_name_for_week,
     slot_label,
+    week_start,
+    workbook_for_week,
 )
 
 
@@ -296,3 +299,157 @@ class SlotRow:
     label: str
     # Per-day list of EventCells in this slot (length 7, Sunday..Saturday).
     cells: list[list[EventCell]]
+
+
+# --- Cross-week range queries --------------------------------------------
+
+def load_events_in_range(
+    start_date: date,
+    end_date: date,
+    schedule_dir: Path,
+    cache: WeeklySheetCache,
+) -> list[EventCell]:
+    """Return all EventCells in [start_date, end_date], inclusive.
+
+    Resolves the (workbook, sheet) for every week the range touches and
+    pulls events from each, filtering down to the requested dates. The
+    cache makes the openpyxl parse cost a one-time hit per workbook
+    until its mtime changes.
+    """
+    from datetime import timedelta as _td
+
+    if end_date < start_date:
+        return []
+
+    visited_sheets: set[tuple[Path, str, int]] = set()
+    out: list[EventCell] = []
+
+    d = week_start(start_date)
+    while d <= end_date:
+        year, month_name = workbook_for_week(d)
+        workbook_path = schedule_dir / str(year) / f"{year}_{month_name}.xlsx"
+        sheet = sheet_name_for_week(d)
+        key = (workbook_path, sheet, year)
+        if key in visited_sheets:
+            d += _td(days=7)
+            continue
+        visited_sheets.add(key)
+
+        ctx = WeekContext.for_date(d)
+        events = cache.get_week(workbook_path, ctx)
+        for ev in events:
+            ev_date = ev.date
+            if ev_date.year == 1900:
+                ev_date = ev_date.replace(year=year)
+            if start_date <= ev_date <= end_date:
+                out.append(
+                    EventCell(
+                        date=ev_date,
+                        slot=ev.slot,
+                        name=ev.name,
+                        status=ev.status,
+                    )
+                )
+        d += _td(days=7)
+
+    return out
+
+
+# --- Month view -----------------------------------------------------------
+
+@dataclass(frozen=True)
+class MonthDayCell:
+    """One day cell on the month grid."""
+
+    date: date
+    in_month: bool
+    is_today: bool
+    events: list[EventCell]
+
+    @property
+    def active_count(self) -> int:
+        return sum(1 for e in self.events if e.status == "active")
+
+    @property
+    def display_events(self) -> list[EventCell]:
+        # Show the first two events; the template handles the "+N more" suffix.
+        return self.events[:2]
+
+    @property
+    def overflow(self) -> int:
+        return max(0, len(self.events) - 2)
+
+
+@dataclass(frozen=True)
+class MonthView:
+    year: int
+    month: int
+    month_name: str
+    grid_start: date  # Sunday on/before the first of the month
+    grid_end: date    # Saturday on/after the last of the month
+    weeks: list[list[MonthDayCell]]
+    prev_month: tuple[int, int]
+    next_month: tuple[int, int]
+    today: date
+
+    @classmethod
+    def build(
+        cls,
+        year: int,
+        month: int,
+        schedule_dir: Path,
+        cache: WeeklySheetCache,
+        today: date | None = None,
+    ) -> "MonthView":
+        from calendar import monthrange
+        from datetime import timedelta as _td
+
+        from .calendar_utils import MONTH_NAMES
+
+        today = today or date.today()
+        first = date(year, month, 1)
+        _, days_in_month = monthrange(year, month)
+        last = date(year, month, days_in_month)
+        grid_start = week_start(first)
+        # Walk to the Saturday on/after the last day.
+        grid_end_week_start = week_start(last)
+        grid_end = grid_end_week_start + _td(days=6)
+
+        events = load_events_in_range(grid_start, grid_end, schedule_dir, cache)
+        by_date: dict[date, list[EventCell]] = {}
+        for ev in events:
+            by_date.setdefault(ev.date, []).append(ev)
+        # Sort each day's events by slot time so the preview is stable.
+        for items in by_date.values():
+            items.sort(key=lambda e: e.slot)
+
+        weeks: list[list[MonthDayCell]] = []
+        d = grid_start
+        while d <= grid_end:
+            row = []
+            for _ in range(7):
+                row.append(
+                    MonthDayCell(
+                        date=d,
+                        in_month=(d.month == month and d.year == year),
+                        is_today=(d == today),
+                        events=by_date.get(d, []),
+                    )
+                )
+                d += _td(days=1)
+            weeks.append(row)
+
+        prev_month = (year, month - 1) if month > 1 else (year - 1, 12)
+        next_month = (year, month + 1) if month < 12 else (year + 1, 1)
+
+        return cls(
+            year=year,
+            month=month,
+            month_name=MONTH_NAMES[month - 1],
+            grid_start=grid_start,
+            grid_end=grid_end,
+            weeks=weeks,
+            prev_month=prev_month,
+            next_month=next_month,
+            today=today,
+        )

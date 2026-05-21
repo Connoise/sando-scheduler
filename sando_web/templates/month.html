@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% set day_names = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"] %}
+{% block title %}{{ view.month_name }} {{ view.year }} — Sando{% endblock %}
+
+{% block topbar %}
+  <nav class="weeknav">
+    <a class="navbtn" href="/month/{{ '%04d-%02d' % view.prev_month }}" aria-label="Previous month">◀</a>
+    <a class="navbtn today" href="/month/{{ '%04d-%02d' % (view.today.year, view.today.month) }}">This month</a>
+    <a class="navbtn" href="/month/{{ '%04d-%02d' % view.next_month }}" aria-label="Next month">▶</a>
+  </nav>
+{% endblock %}
+
+{% block content %}
+  <section class="weekhead">
+    <h1>{{ view.month_name }} {{ view.year }}</h1>
+    <p class="meta">
+      <a href="/week/{{ view.today.isoformat() }}">Week view</a>
+    </p>
+  </section>
+
+  <div class="grid-wrap">
+    <table class="monthgrid" aria-label="{{ view.month_name }} {{ view.year }}">
+      <thead>
+        <tr>
+          {% for name in day_names %}
+            <th scope="col" class="dayhead">{{ name }}</th>
+          {% endfor %}
+        </tr>
+      </thead>
+      <tbody>
+        {% for week in view.weeks %}
+          <tr>
+            {% for cell in week %}
+              <td class="mcell{% if not cell.in_month %} oom{% endif %}{% if cell.is_today %} today{% endif %}">
+                <a class="mday" href="/week/{{ cell.date.isoformat() }}">
+                  <div class="mdaynum">{{ cell.date.day }}</div>
+                  {% for ev in cell.display_events %}
+                    <div class="mevent status-{{ ev.status }}" title="{{ ev.slot_label }} {{ ev.name }}">
+                      <span class="mevent-time">{{ ev.slot_label }}</span>
+                      {{ ev.name }}
+                    </div>
+                  {% endfor %}
+                  {% if cell.overflow %}
+                    <div class="moverflow">+{{ cell.overflow }} more</div>
+                  {% endif %}
+                </a>
+              </td>
+            {% endfor %}
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+{% endblock %}

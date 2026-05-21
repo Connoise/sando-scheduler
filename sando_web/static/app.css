@@ -129,3 +129,78 @@ a { color: var(--link); text-decoration: none; }
   text-decoration: line-through;
   opacity: 0.55;
 }
+
+/* --- Monthly view ------------------------------------------------------ */
+
+.monthgrid {
+  border-collapse: collapse;
+  width: 100%;
+  table-layout: fixed;
+}
+.monthgrid th, .monthgrid td {
+  border: 1px solid var(--border);
+  vertical-align: top;
+}
+.monthgrid thead th {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+  padding: 6px 0;
+  text-align: center;
+  background: var(--bg);
+  position: sticky; top: 56px; z-index: 1;
+}
+.mcell {
+  height: 92px;
+  padding: 0;
+}
+.mcell.oom { background: rgba(127,127,127,0.05); }
+.mcell.oom .mdaynum { color: var(--muted); }
+.mcell.today { background: var(--today-bg); }
+.mday {
+  display: block;
+  color: var(--fg);
+  padding: 4px 5px 6px;
+  height: 100%;
+}
+.mdaynum {
+  font-weight: 600;
+  font-size: 13px;
+  margin-bottom: 3px;
+}
+.mevent {
+  background: var(--event-bg);
+  color: var(--event-fg);
+  border-radius: 4px;
+  padding: 1px 4px;
+  margin: 1px 0;
+  font-size: 11px;
+  line-height: 1.25;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.mevent-time {
+  font-variant-numeric: tabular-nums;
+  opacity: 0.75;
+  margin-right: 3px;
+}
+.mevent.status-cancelled,
+.mevent.status-deleted {
+  text-decoration: line-through;
+  opacity: 0.55;
+}
+.moverflow {
+  font-size: 10px;
+  color: var(--muted);
+  margin-top: 2px;
+}
+
+/* Phone layout: tighter month cells, smaller event chips. */
+@media (max-width: 540px) {
+  .mcell { height: 70px; }
+  .mevent { font-size: 10px; padding: 0 3px; }
+  .mevent-time { display: none; }
+  .moverflow { font-size: 9px; }
+}

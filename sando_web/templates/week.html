@@ -14,7 +14,8 @@
   <section class="weekhead">
     <h1>{{ ctx.start.strftime("%b %-d") }} – {{ ctx.end.strftime("%b %-d, %Y") }}</h1>
     <p class="meta">
-      Sheet: <code>{{ ctx.workbook_month }} / {{ ctx.sheet_name }}</code>
+      <a href="{{ month_link }}">Month view</a>
+      · Sheet: <code>{{ ctx.workbook_month }} / {{ ctx.sheet_name }}</code>
       {% if not view.workbook_exists %}
         <span class="warn">· workbook not yet created</span>
       {% endif %}

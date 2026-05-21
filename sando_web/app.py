@@ -17,7 +17,7 @@ from fastapi.templating import Jinja2Templates
 
 from .calendar_utils import WeekContext, week_dates
 from .config import Settings
-from .schedule_io import WeeklySheetCache, WeeklySheetView
+from .schedule_io import MonthView, WeeklySheetCache, WeeklySheetView
 
 
 PACKAGE_DIR = Path(__file__).parent
@@ -58,6 +58,27 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                 "week_dates": week_dates(ctx.start),
                 "now": datetime.now(),
                 "workbook_path": str(workbook),
+                "month_link": f"/month/{ctx.workbook_year}-{ctx.start.month:02d}",
+            },
+        )
+
+    @app.get("/month/{ym}")
+    def month(ym: str, request: Request):
+        try:
+            year_str, month_str = ym.split("-", 1)
+            year = int(year_str)
+            month = int(month_str)
+            if not (1 <= month <= 12):
+                raise ValueError
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Invalid month (use YYYY-MM)")
+        view = MonthView.build(year, month, settings.schedule_dir, cache)
+        return templates.TemplateResponse(
+            request,
+            "month.html",
+            {
+                "view": view,
+                "today": date.today(),
             },
         )
 
