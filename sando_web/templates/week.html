@@ -7,10 +7,14 @@
     <a class="navbtn" href="/week/{{ ctx.prev_start.isoformat() }}" aria-label="Previous week">◀</a>
     <a class="navbtn today" href="/week/{{ ctx.today.isoformat() }}">Today</a>
     <a class="navbtn" href="/week/{{ ctx.next_start.isoformat() }}" aria-label="Next week">▶</a>
+    <a class="navbtn add" href="/event/new" aria-label="Add event">+</a>
   </nav>
 {% endblock %}
 
 {% block content %}
+  {% if request.query_params.get("flash") == "added" %}
+    <div class="flash">Event added.</div>
+  {% endif %}
   <section class="weekhead">
     <h1>{{ ctx.start.strftime("%b %-d") }} – {{ ctx.end.strftime("%b %-d, %Y") }}</h1>
     <p class="meta">

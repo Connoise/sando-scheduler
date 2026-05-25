@@ -7,6 +7,7 @@
     <a class="navbtn" href="/month/{{ '%04d-%02d' % view.prev_month }}" aria-label="Previous month">◀</a>
     <a class="navbtn today" href="/month/{{ '%04d-%02d' % (view.today.year, view.today.month) }}">This month</a>
     <a class="navbtn" href="/month/{{ '%04d-%02d' % view.next_month }}" aria-label="Next month">▶</a>
+    <a class="navbtn add" href="/event/new" aria-label="Add event">+</a>
   </nav>
 {% endblock %}
 

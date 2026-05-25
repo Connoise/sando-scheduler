@@ -196,6 +196,76 @@ a { color: var(--link); text-decoration: none; }
   margin-top: 2px;
 }
 
+/* --- Add-event form ---------------------------------------------------- */
+
+.event-form { padding: 12px 14px 24px; max-width: 520px; }
+.field { display: block; margin-bottom: 14px; }
+.field-label {
+  display: block;
+  font-size: 12px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: 4px;
+}
+.event-form input[type=text],
+.event-form input[type=number],
+.event-form input[type=datetime-local],
+.event-form select {
+  width: 100%;
+  font-size: 16px;
+  padding: 8px 10px;
+  background: var(--bg);
+  color: var(--fg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+.reminders-field { border: 0; padding: 0; margin-bottom: 14px; }
+.reminder-row {
+  display: flex; gap: 6px; align-items: center;
+  margin-bottom: 6px;
+}
+.reminder-row select { flex: 1; }
+.reminder-row .reminder-custom { flex: 1.4; }
+.reminder-remove {
+  border: 1px solid var(--border); background: transparent; color: var(--fg);
+  border-radius: 8px; padding: 6px 10px; cursor: pointer;
+}
+.reminder-add {
+  border: 1px dashed var(--border); background: transparent; color: var(--link);
+  border-radius: 8px; padding: 8px 12px; cursor: pointer; font-size: 14px;
+}
+.conflict-warning {
+  margin: 6px 0 12px;
+  padding: 8px 10px;
+  border: 1px solid var(--warn);
+  color: var(--warn);
+  border-radius: 8px;
+  font-size: 13px;
+}
+.form-error {
+  margin: 0; padding: 8px 10px;
+  border: 1px solid var(--warn); color: var(--warn);
+  border-radius: 8px; font-size: 13px;
+}
+.form-actions { display: flex; gap: 10px; align-items: center; }
+.form-actions .primary {
+  background: var(--link); color: white; border: 0;
+  padding: 10px 18px; border-radius: 8px; font-size: 16px; cursor: pointer;
+}
+.form-actions .cancel { color: var(--muted); padding: 10px 6px; }
+
+.navbtn.add {
+  background: var(--link); color: white; border-color: var(--link);
+  font-weight: 600;
+}
+
+.flash {
+  margin: 8px 14px 0; padding: 8px 12px;
+  background: var(--event-bg); color: var(--event-fg);
+  border-radius: 8px; font-size: 13px;
+}
+
 /* Phone layout: tighter month cells, smaller event chips. */
 @media (max-width: 540px) {
   .mcell { height: 70px; }
