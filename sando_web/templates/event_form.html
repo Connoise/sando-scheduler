@@ -1,0 +1,147 @@
+{% extends "base.html" %}
+{% block title %}Add event — Sando{% endblock %}
+
+{% block topbar %}
+  <nav class="weeknav">
+    <a class="navbtn" href="/" aria-label="Cancel">✕</a>
+  </nav>
+{% endblock %}
+
+{% block content %}
+  <section class="weekhead">
+    <h1>Add event</h1>
+    {% if error %}<p class="form-error">{{ error }}</p>{% endif %}
+  </section>
+
+  <form method="post" action="/event" class="event-form" id="event-form">
+    <label class="field">
+      <span class="field-label">Event name</span>
+      <input type="text" name="event_name" required
+             value="{{ submitted_name or '' }}"
+             autocomplete="off" autofocus>
+    </label>
+
+    <label class="field">
+      <span class="field-label">Start</span>
+      <input type="datetime-local" name="start" id="start-input"
+             value="{{ default_start }}" required>
+    </label>
+
+    <label class="field">
+      <span class="field-label">Duration (minutes)</span>
+      <input type="number" name="duration_minutes" min="1" step="15"
+             value="{{ default_duration_minutes }}">
+    </label>
+
+    <fieldset class="field reminders-field">
+      <legend class="field-label">Reminders</legend>
+      <div id="reminder-list" data-defaults="{{ default_reminder_offsets|join(',') }}">
+        {% for off in default_reminder_offsets %}
+          <div class="reminder-row">
+            <select name="reminder">
+              <option value="day_of"{% if off == "day_of" %} selected{% endif %}>Day of</option>
+              <option value="1h_before"{% if off == "1h_before" %} selected{% endif %}>1 hour before</option>
+              <option value="30m_before"{% if off == "30m_before" %} selected{% endif %}>30 min before</option>
+              <option value="night_before"{% if off == "night_before" %} selected{% endif %}>Night before</option>
+              <option value="custom"{% if off == "custom" %} selected{% endif %}>Custom</option>
+            </select>
+            <input type="datetime-local" name="reminder_custom" class="reminder-custom" hidden>
+            <button type="button" class="reminder-remove" aria-label="Remove">✕</button>
+          </div>
+        {% endfor %}
+      </div>
+      <button type="button" id="add-reminder" class="reminder-add">+ Add reminder</button>
+    </fieldset>
+
+    <div id="conflict-warning" class="conflict-warning" hidden></div>
+
+    <div class="form-actions">
+      <button type="submit" class="primary">Save</button>
+      <a href="/" class="cancel">Cancel</a>
+    </div>
+  </form>
+
+  <script>
+    (function () {
+      const list = document.getElementById("reminder-list");
+      const addBtn = document.getElementById("add-reminder");
+
+      function wireRow(row) {
+        const sel = row.querySelector("select[name=reminder]");
+        const custom = row.querySelector(".reminder-custom");
+        const remove = row.querySelector(".reminder-remove");
+        function syncCustom() {
+          custom.hidden = sel.value !== "custom";
+          custom.required = sel.value === "custom";
+        }
+        sel.addEventListener("change", syncCustom);
+        remove.addEventListener("click", () => row.remove());
+        syncCustom();
+      }
+      list.querySelectorAll(".reminder-row").forEach(wireRow);
+
+      addBtn.addEventListener("click", () => {
+        const row = document.createElement("div");
+        row.className = "reminder-row";
+        row.innerHTML = `
+          <select name="reminder">
+            <option value="day_of">Day of</option>
+            <option value="1h_before">1 hour before</option>
+            <option value="30m_before" selected>30 min before</option>
+            <option value="night_before">Night before</option>
+            <option value="custom">Custom</option>
+          </select>
+          <input type="datetime-local" name="reminder_custom" class="reminder-custom" hidden>
+          <button type="button" class="reminder-remove" aria-label="Remove">✕</button>
+        `;
+        list.appendChild(row);
+        wireRow(row);
+      });
+
+      // Inline conflict check against /api/events for the event's day.
+      const startInput = document.getElementById("start-input");
+      const durationInput = document.querySelector("input[name=duration_minutes]");
+      const nameInput = document.querySelector("input[name=event_name]");
+      const warning = document.getElementById("conflict-warning");
+
+      async function checkConflict() {
+        const v = startInput.value;
+        if (!v) { warning.hidden = true; return; }
+        const startDate = v.slice(0, 10);
+        const dur = parseInt(durationInput.value, 10) || 60;
+        const start = new Date(v);
+        const end = new Date(start.getTime() + dur * 60000);
+        const endDate = end.toISOString().slice(0, 10);
+        const url = `/api/events?from=${startDate}&to=${endDate}`;
+        try {
+          const resp = await fetch(url);
+          if (!resp.ok) { warning.hidden = true; return; }
+          const events = await resp.json();
+          const overlaps = events.filter(e => {
+            if (e.status !== "active") return false;
+            const [h, m] = e.slot.split(":").map(Number);
+            const ev = new Date(`${e.date}T${String(h).padStart(2,"0")}:${String(m).padStart(2,"0")}`);
+            const evEnd = new Date(ev.getTime() + 30 * 60000);
+            // The new event excludes its own name (relevant when editing later).
+            const myName = (nameInput.value || "").trim();
+            if (myName && e.name === myName) return false;
+            return ev < end && evEnd > start;
+          });
+          if (overlaps.length === 0) {
+            warning.hidden = true;
+            warning.textContent = "";
+          } else {
+            const names = [...new Set(overlaps.map(e => `${e.slot_label} ${e.name}`))];
+            warning.hidden = false;
+            warning.textContent = "Heads up — overlaps: " + names.join(", ");
+          }
+        } catch (e) {
+          warning.hidden = true;
+        }
+      }
+      startInput.addEventListener("change", checkConflict);
+      durationInput.addEventListener("change", checkConflict);
+      checkConflict();
+    })();
+  </script>
+{% endblock %}
