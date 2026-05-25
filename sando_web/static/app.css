@@ -75,7 +75,6 @@ a { color: var(--link); text-decoration: none; }
 .weekgrid {
   border-collapse: collapse;
   width: 100%;
-  min-width: 720px; /* keeps columns legible on phones */
   table-layout: fixed;
 }
 .weekgrid th, .weekgrid td {
@@ -203,4 +202,12 @@ a { color: var(--link); text-decoration: none; }
   .mevent { font-size: 10px; padding: 0 3px; }
   .mevent-time { display: none; }
   .moverflow { font-size: 9px; }
+
+  /* Week view: shrink time column and text so the full 7-day grid fits. */
+  .slot-col { width: 36px; font-size: 9px; padding-right: 3px !important; }
+  .weekgrid .dayname { font-size: 9px; letter-spacing: 0; }
+  .weekgrid .daynum { font-size: 13px; }
+  .weekgrid thead th { padding: 4px 2px; }
+  .slot-row td { height: 18px; }
+  .event { font-size: 9px; padding: 1px 2px; }
 }
