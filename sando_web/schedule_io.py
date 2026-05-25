@@ -14,7 +14,7 @@ import fcntl
 import json
 import logging
 from dataclasses import dataclass
-from datetime import date, time
+from datetime import date, time, timedelta
 from pathlib import Path
 from threading import Lock
 
@@ -105,6 +105,34 @@ class WeeklySheetCache:
             self._entries.clear()
 
 
+def _week_start_from_sheet_name(sheet_name: str, year: int) -> date | None:
+    """Parse a sheet name like 'May 24-30' into the week's start date.
+
+    The spreadsheet uses '<MonthAbbr> <startDay>-<endDay>' per
+    scheduler_instructions.md. We only need the month abbreviation and the
+    start day; the year comes from the workbook path.
+    """
+    import calendar as _cal
+    parts = sheet_name.strip().split()
+    if len(parts) < 2:
+        return None
+    month_abbr = parts[0]
+    day_range = parts[1]
+    start_day_str = day_range.split("-")[0]
+    try:
+        start_day = int(start_day_str)
+    except ValueError:
+        return None
+    abbr_to_num = {abbr: i for i, abbr in enumerate(_cal.month_abbr) if abbr}
+    month_num = abbr_to_num.get(month_abbr)
+    if month_num is None:
+        return None
+    try:
+        return date(year, month_num, start_day)
+    except ValueError:
+        return None
+
+
 def _parse_workbook(path: Path) -> dict[str, list[EventCell]]:
     """Return {sheet_name: [EventCell, ...]} for every weekly sheet."""
     try:
@@ -113,32 +141,47 @@ def _parse_workbook(path: Path) -> dict[str, list[EventCell]]:
         logger.error("Failed to open workbook %s: %s", path, e)
         return {}
 
+    # Extract year from path (.../2026/2026_May.xlsx → 2026).
+    try:
+        workbook_year = int(path.parent.name)
+    except (ValueError, AttributeError):
+        workbook_year = date.today().year
+
     result: dict[str, list[EventCell]] = {}
     try:
         for sheet_name in wb.sheetnames:
             sheet = wb[sheet_name]
-            result[sheet_name] = list(_parse_sheet(sheet))
+            week_start_date = _week_start_from_sheet_name(sheet_name, workbook_year)
+            result[sheet_name] = list(_parse_sheet(sheet, week_start_date))
     finally:
         wb.close()
     return result
 
 
-def _parse_sheet(sheet) -> list[EventCell]:
+def _parse_sheet(sheet, week_start_date: date | None) -> list[EventCell]:
     """Parse one weekly sheet into EventCell objects.
 
     Layout (per scheduler_instructions.md §Workbook Layout):
-      - Row 1: header. Columns B..H contain dates for Sun..Sat in some
-        format ('Sunday 4/6'). We extract the date from each header cell.
+      - Row 1: header. Columns B..H are Sun..Sat.
       - Column A rows 2..49: slot labels like '2:30 PM'.
       - Columns B..H rows 2..49: cell content.
+
+    Dates are derived from week_start_date (preferred) so we don't depend
+    on the header row format, which varies across workbooks.
     """
-    # Map column index -> date by reading header row.
-    header_dates: dict[int, date] = {}
-    for col in range(2, 9):  # B..H
-        raw = sheet.cell(row=1, column=col).value
-        d = _extract_date_from_header(raw)
-        if d is not None:
-            header_dates[col] = d
+    if week_start_date is not None:
+        # Columns B..H (indices 2..8) map to Sun..Sat offset 0..6.
+        header_dates: dict[int, date] = {
+            col: week_start_date + timedelta(days=col - 2) for col in range(2, 9)
+        }
+    else:
+        # Fallback: try to parse dates from the header row text.
+        header_dates = {}
+        for col in range(2, 9):
+            raw = sheet.cell(row=1, column=col).value
+            d = _extract_date_from_header(raw)
+            if d is not None:
+                header_dates[col] = d
 
     events: list[EventCell] = []
     for row in range(2, 50):  # 48 slot rows
