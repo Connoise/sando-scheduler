@@ -11,7 +11,7 @@ from datetime import date, datetime, timedelta
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException, Request
-from fastapi.responses import JSONResponse, RedirectResponse
+from fastapi.responses import FileResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
@@ -229,6 +229,25 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             }
             for e in events
         ])
+
+    @app.get("/manifest.webmanifest", include_in_schema=False)
+    def manifest():
+        return FileResponse(
+            STATIC_DIR / "manifest.webmanifest",
+            media_type="application/manifest+json",
+        )
+
+    @app.get("/sw.js", include_in_schema=False)
+    def service_worker():
+        # The SW must be served from the URL it should control (the root)
+        # and with an explicit JS MIME so browsers register it. Disable
+        # caching so updates roll out on the next page load.
+        return FileResponse(
+            STATIC_DIR / "sw.js",
+            media_type="application/javascript",
+            headers={"Cache-Control": "no-cache",
+                     "Service-Worker-Allowed": "/"},
+        )
 
     @app.get("/healthz", include_in_schema=False)
     def healthz() -> dict:
