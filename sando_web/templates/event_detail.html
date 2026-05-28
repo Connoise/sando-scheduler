@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% block title %}{{ detail.name }} — Sando{% endblock %}
+
+{% block topbar %}
+  <nav class="weeknav">
+    <a class="navbtn" href="{{ back_link }}" aria-label="Back">◀ Back</a>
+  </nav>
+{% endblock %}
+
+{% block content %}
+  <section class="event-detail">
+    <h1 class="event-detail-name status-{{ detail.status }}">{{ detail.name }}</h1>
+    <dl class="event-detail-meta">
+      <dt>Date</dt>
+      <dd>{{ detail.date.strftime("%A, %b %-d, %Y") }}</dd>
+      <dt>Time</dt>
+      <dd>{{ detail.start_label }} – {{ detail.end_label }}</dd>
+      <dt>Status</dt>
+      <dd class="status-{{ detail.status }}">{{ detail.status }}</dd>
+      {% if detail.reminders %}
+        <dt>Reminders</dt>
+        <dd>
+          <ul class="reminder-list">
+            {% for r in detail.reminders %}
+              <li class="status-{{ r.status }}">
+                <code>{{ r.id }}</code>
+                <span class="reminder-status">({{ r.status }})</span>
+              </li>
+            {% endfor %}
+          </ul>
+        </dd>
+      {% endif %}
+    </dl>
+
+    {% if detail.status == "active" %}
+      <div class="event-actions">
+        <form method="post"
+              action="/event/{{ detail.date.isoformat() }}/{{ detail.name|urlencode }}/cancel"
+              onsubmit="return confirm('Cancel {{ detail.name|e }}? Reminders will stop firing.');">
+          <button type="submit" class="action cancel">Cancel event</button>
+        </form>
+        <form method="post"
+              action="/event/{{ detail.date.isoformat() }}/{{ detail.name|urlencode }}/delete"
+              onsubmit="return confirm('Delete {{ detail.name|e }}? It will remain on the schedule annotated as deleted.');">
+          <button type="submit" class="action delete">Delete event</button>
+        </form>
+      </div>
+    {% else %}
+      <p class="event-actions-note">
+        This event is {{ detail.status }}. Reminders are suppressed and the
+        cell stays annotated for history.
+      </p>
+    {% endif %}
+  </section>
+{% endblock %}

@@ -12,8 +12,13 @@
 {% endblock %}
 
 {% block content %}
-  {% if request.query_params.get("flash") == "added" %}
+  {% set flash = request.query_params.get("flash") %}
+  {% if flash == "added" %}
     <div class="flash">Event added.</div>
+  {% elif flash == "cancelled" %}
+    <div class="flash">Event cancelled.</div>
+  {% elif flash == "deleted" %}
+    <div class="flash">Event deleted.</div>
   {% endif %}
   <section class="weekhead">
     <h1>{{ ctx.start.strftime("%b %-d") }} – {{ ctx.end.strftime("%b %-d, %Y") }}</h1>
@@ -48,9 +53,11 @@
             {% for cell in row.cells %}
               <td class="cell{% if cell %} filled{% endif %}">
                 {% for ev in cell %}
-                  <div class="event status-{{ ev.status }}" title="{{ ev.name }} ({{ ev.status }})">
+                  <a class="event status-{{ ev.status }}"
+                     href="/event/{{ ev.date.isoformat() }}/{{ ev.name|urlencode }}?back=/week/{{ ctx.cursor.isoformat() }}"
+                     title="{{ ev.name }} ({{ ev.status }})">
                     {{ ev.name }}
-                  </div>
+                  </a>
                 {% endfor %}
               </td>
             {% endfor %}

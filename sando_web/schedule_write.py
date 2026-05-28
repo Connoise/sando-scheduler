@@ -40,6 +40,13 @@ from .config import HST
 logger = logging.getLogger(__name__)
 
 
+# Match the spreadsheet's "Event Name (cancelled)" / "(deleted)" suffix.
+_STATUS_SUFFIX = {
+    "cancelled": "(cancelled)",
+    "deleted": "(deleted)",
+}
+
+
 # --- File locking ---------------------------------------------------------
 
 @contextmanager
@@ -433,3 +440,179 @@ def _format_clock(t: time) -> str:
     hour = t.hour % 12 or 12
     ampm = "AM" if t.hour < 12 else "PM"
     return f"{hour}:{t.minute:02d} {ampm}"
+
+
+# --- Cancel / Delete -----------------------------------------------------
+
+ACTION_FOR_STATUS = {"cancelled": "CANCEL", "deleted": "DELETE"}
+
+
+def update_event_status(
+    *,
+    event_name: str,
+    event_date: date,
+    new_status: str,
+    schedule_dir: Path,
+    reminders_file: Path,
+    changelog_file: Path,
+    details: str | None = None,
+) -> int:
+    """Cancel or delete the event identified by (event_name, event_date).
+
+    Per scheduler_instructions.md §Cancel vs. Delete:
+      - Rewrite every spreadsheet cell containing this active event from
+        ``Name`` to ``Name (cancelled)`` / ``Name (deleted)``.
+      - Set ``status: new_status`` on every matching reminders.json entry.
+      - Append a CANCEL or DELETE row to changelog.csv.
+
+    Returns the number of spreadsheet cells modified.
+    """
+    if new_status not in _STATUS_SUFFIX:
+        raise ValueError(f"Unsupported status: {new_status}")
+    name = event_name.strip()
+    if not name:
+        raise ValueError("event_name is required")
+
+    modified_cells, start_t, end_t = _restatus_cells(
+        schedule_dir, name, event_date, new_status
+    )
+    _restatus_reminders(reminders_file, name, event_date, new_status)
+    _append_changelog(
+        changelog_file,
+        action=ACTION_FOR_STATUS[new_status],
+        event_name=name,
+        ev_date=event_date,
+        start=_attach_hst(event_date, start_t or time(0, 0)),
+        end=_attach_hst(event_date, end_t or time(0, 0)),
+        details=details or f"{new_status.capitalize()} via mobile app",
+    )
+    return modified_cells
+
+
+def _attach_hst(d: date, t: time) -> datetime:
+    return datetime.combine(d, t, tzinfo=HST)
+
+
+def _restatus_cells(
+    schedule_dir: Path,
+    event_name: str,
+    event_date: date,
+    new_status: str,
+) -> tuple[int, time | None, time | None]:
+    """Rewrite cells on event_date where event_name appears as an active entry.
+
+    Returns (cells_modified, earliest_slot, latest_slot+30min).
+    """
+    ws_start = week_start(event_date)
+    year, month_name = workbook_for_week(ws_start)
+    wb_path = schedule_dir / str(year) / f"{year}_{month_name}.xlsx"
+    if not wb_path.exists():
+        return 0, None, None
+
+    sheet_name = sheet_name_for_week(ws_start)
+    col = _day_column((event_date - ws_start).days)
+    suffix = _STATUS_SUFFIX[new_status]
+
+    cells_modified = 0
+    slots_touched: list[time] = []
+
+    with _xlsx_lock(wb_path):
+        wb = load_workbook(str(wb_path))
+        try:
+            if sheet_name not in wb.sheetnames:
+                return 0, None, None
+            ws = wb[sheet_name]
+            for row_idx, slot in enumerate(half_hour_slots(), start=2):
+                raw = ws.cell(row=row_idx, column=col).value
+                if not raw:
+                    continue
+                new_text, changed = _annotate_active_match(
+                    str(raw), event_name, suffix
+                )
+                if changed:
+                    ws.cell(row=row_idx, column=col, value=new_text)
+                    cells_modified += 1
+                    slots_touched.append(slot)
+            if cells_modified:
+                wb.save(str(wb_path))
+        finally:
+            wb.close()
+
+    if not slots_touched:
+        return 0, None, None
+    earliest = min(slots_touched)
+    latest_plus = _slot_plus_30(max(slots_touched))
+    return cells_modified, earliest, latest_plus
+
+
+def _slot_plus_30(t: time) -> time:
+    end_dt = datetime(2000, 1, 1, t.hour, t.minute) + timedelta(minutes=30)
+    # Roll midnight back so the "end" still reads as 12:00 AM rather than
+    # spilling into the next date; the spreadsheet row range is [0..23:30].
+    return end_dt.time()
+
+
+def _annotate_active_match(
+    cell_text: str, event_name: str, suffix: str
+) -> tuple[str, bool]:
+    """Replace each active ``event_name`` in a cell with ``event_name suffix``.
+
+    Pipe-separated entries already annotated with ``(cancelled)`` or
+    ``(deleted)`` are left alone.
+    """
+    parts = [p.strip() for p in cell_text.split("|")]
+    changed = False
+    out: list[str] = []
+    for part in parts:
+        if not part:
+            continue
+        bare, existing = _strip_status_suffix(part)
+        if bare == event_name and existing is None:
+            out.append(f"{event_name} {suffix}")
+            changed = True
+        else:
+            out.append(part)
+    return " | ".join(out), changed
+
+
+def _strip_status_suffix(text: str) -> tuple[str, str | None]:
+    """Return (bare_name, status) where status is 'cancelled', 'deleted', or None."""
+    lower = text.lower()
+    for status, suffix in _STATUS_SUFFIX.items():
+        if lower.endswith(suffix):
+            return text[: -len(suffix)].rstrip(), status
+    return text, None
+
+
+def _restatus_reminders(
+    reminders_file: Path, event_name: str, event_date: date, new_status: str
+) -> int:
+    """Set status on every matching reminder. Returns the count updated."""
+    if not reminders_file.exists():
+        return 0
+    updated = 0
+    target_date = event_date.isoformat()
+    with reminders_file.open("r+") as f:
+        fcntl.flock(f, fcntl.LOCK_EX)
+        try:
+            try:
+                data = json.load(f)
+                if not isinstance(data, list):
+                    return 0
+            except json.JSONDecodeError:
+                return 0
+            for entry in data:
+                if not isinstance(entry, dict):
+                    continue
+                if (entry.get("event_name") == event_name
+                        and entry.get("event_date") == target_date
+                        and entry.get("status", "active") == "active"):
+                    entry["status"] = new_status
+                    updated += 1
+            if updated:
+                f.seek(0)
+                f.truncate()
+                json.dump(data, f, indent=2)
+        finally:
+            fcntl.flock(f, fcntl.LOCK_UN)
+    return updated
