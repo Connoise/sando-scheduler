@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" rx="96" fill="#0b58c2"/>
+  <g fill="#ffffff">
+    <!-- A stylised calendar grid: top bar + 3x3 cells -->
+    <rect x="96" y="120" width="320" height="60" rx="14"/>
+    <g opacity="0.95">
+      <rect x="96"  y="208" width="92" height="80" rx="10"/>
+      <rect x="210" y="208" width="92" height="80" rx="10"/>
+      <rect x="324" y="208" width="92" height="80" rx="10"/>
+      <rect x="96"  y="304" width="92" height="80" rx="10"/>
+      <rect x="210" y="304" width="92" height="80" rx="10" fill="#ffd166"/>
+      <rect x="324" y="304" width="92" height="80" rx="10"/>
+      <rect x="96"  y="400" width="92" height="40" rx="10"/>
+      <rect x="210" y="400" width="92" height="40" rx="10"/>
+      <rect x="324" y="400" width="92" height="40" rx="10"/>
+    </g>
+  </g>
+</svg>

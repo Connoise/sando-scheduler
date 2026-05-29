@@ -11,7 +11,7 @@ from datetime import date, datetime, timedelta
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException, Request
-from fastapi.responses import JSONResponse, RedirectResponse
+from fastapi.responses import FileResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
@@ -21,12 +21,14 @@ from .schedule_io import (
     MonthView,
     WeeklySheetCache,
     WeeklySheetView,
+    load_event_detail,
     load_events_in_range,
 )
 from .schedule_write import (
     ReminderSpec,
     build_default_reminder_specs,
     build_reminder_spec,
+    update_event_status,
     write_event,
 )
 
@@ -155,6 +157,55 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             status_code=303,
         )
 
+    @app.get("/event/{ev_date}/{name}")
+    def event_detail(ev_date: str, name: str, request: Request):
+        try:
+            d = date.fromisoformat(ev_date)
+        except ValueError:
+            raise HTTPException(400, "Invalid date (use YYYY-MM-DD)")
+        detail = load_event_detail(
+            name, d, settings.schedule_dir, settings.reminders_file, cache
+        )
+        if detail is None:
+            raise HTTPException(404, "Event not found")
+        return templates.TemplateResponse(
+            request,
+            "event_detail.html",
+            {
+                "detail": detail,
+                "week_link": f"/week/{d.isoformat()}",
+                "back_link": request.query_params.get("back") or f"/week/{d.isoformat()}",
+            },
+        )
+
+    @app.post("/event/{ev_date}/{name}/{action}")
+    def event_action(ev_date: str, name: str, action: str):
+        if action == "cancel":
+            new_status = "cancelled"
+        elif action == "delete":
+            new_status = "deleted"
+        else:
+            raise HTTPException(404, "Unknown action")
+        try:
+            d = date.fromisoformat(ev_date)
+        except ValueError:
+            raise HTTPException(400, "Invalid date (use YYYY-MM-DD)")
+        changed = update_event_status(
+            event_name=name,
+            event_date=d,
+            new_status=new_status,
+            schedule_dir=settings.schedule_dir,
+            reminders_file=settings.reminders_file,
+            changelog_file=settings.changelog_file,
+        )
+        if changed == 0:
+            raise HTTPException(404, "Event not found")
+        cache.clear()
+        flash = "cancelled" if new_status == "cancelled" else "deleted"
+        return RedirectResponse(
+            url=f"/week/{d.isoformat()}?flash={flash}", status_code=303,
+        )
+
     @app.get("/api/events")
     def api_events(request: Request):
         # `from` is a Python keyword, so read from query params directly.
@@ -178,6 +229,25 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             }
             for e in events
         ])
+
+    @app.get("/manifest.webmanifest", include_in_schema=False)
+    def manifest():
+        return FileResponse(
+            STATIC_DIR / "manifest.webmanifest",
+            media_type="application/manifest+json",
+        )
+
+    @app.get("/sw.js", include_in_schema=False)
+    def service_worker():
+        # The SW must be served from the URL it should control (the root)
+        # and with an explicit JS MIME so browsers register it. Disable
+        # caching so updates roll out on the next page load.
+        return FileResponse(
+            STATIC_DIR / "sw.js",
+            media_type="application/javascript",
+            headers={"Cache-Control": "no-cache",
+                     "Service-Worker-Allowed": "/"},
+        )
 
     @app.get("/healthz", include_in_schema=False)
     def healthz() -> dict:

@@ -1,0 +1,19 @@
+{
+  "name": "Sando Scheduler",
+  "short_name": "Sando",
+  "description": "Sando Scheduler — read and add events on the household calendar.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#fafafa",
+  "theme_color": "#0b58c2",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "/static/icon.svg",
+      "type": "image/svg+xml",
+      "sizes": "any",
+      "purpose": "any maskable"
+    }
+  ]
+}

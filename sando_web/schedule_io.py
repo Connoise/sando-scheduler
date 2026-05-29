@@ -398,6 +398,80 @@ def load_events_in_range(
     return out
 
 
+# --- Event detail ---------------------------------------------------------
+
+@dataclass(frozen=True)
+class EventDetail:
+    """Aggregated view of an event on a given date.
+
+    Collapses every spreadsheet cell on `date` whose name matches
+    `event_name` into one logical event. `status` is the most-severe
+    annotation present (deleted > cancelled > active) so the UI can
+    decide what actions to offer.
+    """
+
+    name: str
+    date: date
+    start: time
+    end: time
+    status: str
+    slot_count: int
+    reminders: list[Reminder]
+
+    @property
+    def start_label(self) -> str:
+        return slot_label(self.start)
+
+    @property
+    def end_label(self) -> str:
+        return slot_label(self.end)
+
+
+def load_event_detail(
+    event_name: str,
+    event_date: date,
+    schedule_dir: Path,
+    reminders_file: Path,
+    cache: WeeklySheetCache,
+) -> EventDetail | None:
+    """Look up an event by (name, date). Returns None if no cells match."""
+    cells = load_events_in_range(event_date, event_date, schedule_dir, cache)
+    matches = [c for c in cells if c.name == event_name]
+    if not matches:
+        return None
+
+    slots = sorted(c.slot for c in matches)
+    # End is the latest matched slot plus 30 min, expressed in the same
+    # 24h domain. We bound at 23:30 because the spreadsheet stops there.
+    last = slots[-1]
+    end_minutes = min(last.hour * 60 + last.minute + 30, 23 * 60 + 30)
+    end = time(end_minutes // 60, end_minutes % 60)
+
+    statuses = {c.status for c in matches}
+    if "deleted" in statuses:
+        status = "deleted"
+    elif "cancelled" in statuses:
+        status = "cancelled"
+    else:
+        status = "active"
+
+    reminders = [
+        r for r in load_reminders(reminders_file)
+        if r.event_name == event_name and r.event_date == event_date
+    ]
+    reminders.sort(key=lambda r: r.id)
+
+    return EventDetail(
+        name=event_name,
+        date=event_date,
+        start=slots[0],
+        end=end,
+        status=status,
+        slot_count=len(matches),
+        reminders=reminders,
+    )
+
+
 # --- Month view -----------------------------------------------------------
 
 @dataclass(frozen=True)

@@ -131,8 +131,8 @@ Binding to the tailnet IP (or `100.64.0.0/10` interface) instead of `0.0.0.0` en
 1. **v0.1 ✅** — Read-only weekly view served over Tailscale. Confirms file parsing + access model.
 2. **v0.2 ✅** — Monthly view + day-detail tap-through.
 3. **v0.3 ✅** — Add-event form, conflict warning, dual-write to xlsx + reminders.json + changelog.
-4. **v0.4** — Event-detail sheet with Cancel / Delete actions.
-5. **v0.5** — PWA polish (manifest, service worker, install prompt).
+4. **v0.4 ✅** — Event-detail sheet with Cancel / Delete actions.
+5. **v0.5 ✅** — PWA polish (manifest, service worker, install prompt).
 
 ## Open Questions
 

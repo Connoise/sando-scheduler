@@ -112,6 +112,7 @@ a { color: var(--link); text-decoration: none; }
 .cell { padding: 1px 2px; }
 .cell.filled { background: rgba(127,127,127,0.04); }
 .event {
+  display: block;
   background: var(--event-bg);
   color: var(--event-fg);
   border-radius: 4px;
@@ -123,6 +124,7 @@ a { color: var(--link); text-decoration: none; }
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+a.event { text-decoration: none; }
 .event.status-cancelled,
 .event.status-deleted {
   text-decoration: line-through;
@@ -265,6 +267,43 @@ a { color: var(--link); text-decoration: none; }
   background: var(--event-bg); color: var(--event-fg);
   border-radius: 8px; font-size: 13px;
 }
+
+/* --- Event detail view ------------------------------------------------- */
+
+.event-detail { padding: 12px 14px 24px; max-width: 560px; }
+.event-detail-name { margin: 0 0 12px; font-size: 22px; }
+.event-detail-name.status-cancelled,
+.event-detail-name.status-deleted {
+  text-decoration: line-through; opacity: 0.65;
+}
+.event-detail-meta { margin: 0 0 18px; }
+.event-detail-meta dt {
+  font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em;
+  color: var(--muted); margin-top: 10px;
+}
+.event-detail-meta dd { margin: 2px 0 0; padding: 0; font-size: 15px; }
+.event-detail-meta dd.status-cancelled,
+.event-detail-meta dd.status-deleted { color: var(--muted); }
+.reminder-list { list-style: none; padding: 0; margin: 0; font-size: 13px; }
+.reminder-list code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12px; opacity: 0.85;
+}
+.reminder-status { color: var(--muted); margin-left: 6px; font-size: 12px; }
+.reminder-list li.status-cancelled,
+.reminder-list li.status-deleted { opacity: 0.55; text-decoration: line-through; }
+
+.event-actions { display: flex; gap: 10px; margin-top: 16px; }
+.event-actions form { margin: 0; }
+.event-actions .action {
+  border: 1px solid var(--border); background: transparent; color: var(--fg);
+  padding: 10px 16px; border-radius: 8px; font-size: 15px; cursor: pointer;
+}
+.event-actions .action.cancel { color: var(--warn); border-color: var(--warn); }
+.event-actions .action.delete {
+  background: var(--warn); color: white; border-color: var(--warn);
+}
+.event-actions-note { color: var(--muted); font-size: 13px; }
 
 /* Phone layout: tighter month cells, smaller event chips. */
 @media (max-width: 540px) {
