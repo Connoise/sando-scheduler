@@ -71,13 +71,16 @@ def workbook_for_week(week_start_date: date) -> tuple[int, str]:
 def sheet_name_for_week(week_start_date: date) -> str:
     """Match the spreadsheet's per-week sheet name, e.g. 'Apr 6-12'.
 
-    The whole week shares one sheet even when it spans months; the sheet
-    name uses the month of the week's start date for the prefix, matching
-    the example in scheduler_instructions.md.
+    When a week spans two months the end day is prefixed with the end
+    month abbreviation, e.g. 'Jun 28-Jul 4', matching the actual
+    spreadsheet convention for cross-month weeks.
     """
     end = week_start_date + timedelta(days=6)
-    month_abbr = week_start_date.strftime("%b")
-    return f"{month_abbr} {week_start_date.day}-{end.day}"
+    start_abbr = week_start_date.strftime("%b")
+    if end.month != week_start_date.month:
+        end_abbr = end.strftime("%b")
+        return f"{start_abbr} {week_start_date.day}-{end_abbr} {end.day}"
+    return f"{start_abbr} {week_start_date.day}-{end.day}"
 
 
 @dataclass(frozen=True)
