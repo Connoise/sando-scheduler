@@ -5,11 +5,24 @@ from __future__ import annotations
 import json
 import os
 from dataclasses import dataclass, field
-from datetime import timezone, timedelta
+from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 
 
 HST = timezone(timedelta(hours=-10))
+
+
+def today_hst() -> date:
+    """Return the current calendar date in the app's timezone (HST).
+
+    The schedule is reasoned about in Hawaii time, so the default week and
+    month — and the "today" highlight — must be derived from the HST date.
+    Using the server's local date (commonly UTC) would land the default on
+    the wrong day for the ~10 hours each day that UTC and HST fall on
+    different calendar dates.
+    """
+    return datetime.now(HST).date()
+
 
 DEFAULT_CONFIG = {
     "default_event_duration_minutes": 60,

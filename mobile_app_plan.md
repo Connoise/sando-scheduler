@@ -33,6 +33,7 @@ Keep it boring and host-friendly:
 |---|---|---|
 | `GET` | `/` | Redirects to current week view |
 | `GET` | `/week/{YYYY-MM-DD}` | Weekly view (week containing the date) |
+| `GET` | `/month` | Redirects to current month view |
 | `GET` | `/month/{YYYY-MM}` | Monthly view |
 | `GET` | `/event/new` | Add-event form |
 | `POST` | `/event` | Create event |
