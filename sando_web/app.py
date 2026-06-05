@@ -16,7 +16,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
 from .calendar_utils import WeekContext, week_dates
-from .config import HST, Settings
+from .config import HST, Settings, today_hst
 from .schedule_io import (
     MonthView,
     WeeklySheetCache,
@@ -50,7 +50,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     @app.get("/", include_in_schema=False)
     def root() -> RedirectResponse:
-        today = date.today()
+        today = today_hst()
         return RedirectResponse(url=f"/week/{today.isoformat()}", status_code=307)
 
     @app.get("/week/{cursor}")
@@ -59,7 +59,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             cursor_date = date.fromisoformat(cursor)
         except ValueError:
             raise HTTPException(status_code=400, detail="Invalid date (use YYYY-MM-DD)")
-        ctx = WeekContext.for_date(cursor_date)
+        ctx = WeekContext.for_date(cursor_date, today=today_hst())
         workbook = settings.workbook_path(ctx.workbook_year, ctx.workbook_month)
         view = WeeklySheetView.build(ctx, workbook, cache)
         return templates.TemplateResponse(
@@ -75,6 +75,13 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             },
         )
 
+    @app.get("/month", include_in_schema=False)
+    def month_root() -> RedirectResponse:
+        today = today_hst()
+        return RedirectResponse(
+            url=f"/month/{today.year}-{today.month:02d}", status_code=307
+        )
+
     @app.get("/month/{ym}")
     def month(ym: str, request: Request):
         try:
@@ -85,13 +92,15 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                 raise ValueError
         except ValueError:
             raise HTTPException(status_code=400, detail="Invalid month (use YYYY-MM)")
-        view = MonthView.build(year, month, settings.schedule_dir, cache)
+        view = MonthView.build(
+            year, month, settings.schedule_dir, cache, today=today_hst()
+        )
         return templates.TemplateResponse(
             request,
             "month.html",
             {
                 "view": view,
-                "today": date.today(),
+                "today": view.today,
             },
         )
 
