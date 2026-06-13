@@ -9,8 +9,10 @@ WorkingDirectory=/home/connoise/Schedule
 ExecStart=/home/connoise/sando-scheduler/venv/bin/python3 /home/connoise/Schedule/reminder_daemon.py
 Restart=always
 RestartSec=10
-Environment=TELEGRAM_BOT_TOKEN=8313726439:AAHDDrgV-nGqvhJSam5eNuBu9pLi3ScrdBQ
-Environment=TELEGRAM_CHAT_ID=-5218106664
+# Secrets (TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID) live outside the repo.
+# Create this file on the host from reminder-daemon.env.example and
+# chmod 600 it — deploy.sh does this for you. See the README.
+EnvironmentFile=/etc/sando-scheduler/reminder-daemon.env
 Environment=REMINDERS_FILE=/home/connoise/Schedule/reminders.json
 
 [Install]

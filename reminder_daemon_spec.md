@@ -69,12 +69,23 @@ WorkingDirectory=/home/Schedule
 ExecStart=/usr/bin/python3 /home/Schedule/reminder_daemon.py
 Restart=always
 RestartSec=10
-Environment=TELEGRAM_BOT_TOKEN=<token>
-Environment=TELEGRAM_CHAT_ID=<chat_id>
+# Secrets live outside the repo in a root-owned, chmod-600 file.
+EnvironmentFile=/etc/sando-scheduler/reminder-daemon.env
 Environment=REMINDERS_FILE=/home/Schedule/reminders.json
 
 [Install]
 WantedBy=multi-user.target
+```
+
+Keep the bot token and chat ID out of the unit file (and out of git). Put
+them in `/etc/sando-scheduler/reminder-daemon.env`, loaded via
+`EnvironmentFile=`:
+
+```bash
+sudo install -d -m 700 /etc/sando-scheduler
+sudo install -m 600 reminder-daemon.env.example \
+    /etc/sando-scheduler/reminder-daemon.env
+sudo "${EDITOR:-vi}" /etc/sando-scheduler/reminder-daemon.env   # fill in real values
 ```
 
 Enable and start:
@@ -83,6 +94,10 @@ Enable and start:
 sudo systemctl enable reminder-daemon.service
 sudo systemctl start reminder-daemon.service
 ```
+
+> If a token is ever committed, **rotate it** (revoke via @BotFather and
+> issue a new one). Removing it from the working tree does not remove it
+> from git history.
 
 ## Script Skeleton
 
