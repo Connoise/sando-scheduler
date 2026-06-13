@@ -170,20 +170,34 @@ TL;DR:
 Both components run as systemd services on the host.
 
 - **Daemon:** `./deploy.sh` copies `reminder_daemon.py` into `SCHEDULE_DIR`,
-  installs dependencies, and enables `reminder-daemon.service`.
+  installs dependencies, provisions the secrets file (see below), and enables
+  `reminder-daemon.service`.
 - **Web app:** install `sando-web.service` and bind it to the host's Tailscale
   interface — set `SANDO_WEB_HOST` to the Tailnet IP so the port is never
   reachable on the LAN. The phone joins the same Tailnet and hits
   `http://<tailnet-host>:8765/`; access control is Tailscale device identity,
   no extra auth layer. See `mobile_app_plan.md` §Access Model.
 
+## Secrets
+
+The bot token and chat ID are **not** stored in the repo. In production they
+live in `/etc/sando-scheduler/reminder-daemon.env` (root-owned, `chmod 600`),
+which `reminder-daemon.service` loads via `EnvironmentFile=`. Create it from
+[`reminder-daemon.env.example`](./reminder-daemon.env.example) — `deploy.sh`
+does this for you and refuses to start the service while the placeholders are
+unfilled. Any `*.env` file is gitignored as a safety net.
+
+> **Rotate on exposure.** A bot token previously committed to this repo is
+> still recoverable from git history, so it must be revoked and reissued via
+> @BotFather. Removing it from the working tree is not enough on its own.
+
 ## Environment variables
 
-**Daemon** (`reminder_daemon.py`):
+**Daemon** (`reminder_daemon.py`) — `TELEGRAM_*` come from the secrets file above:
 
 | Variable | Description |
 |---|---|
-| `TELEGRAM_BOT_TOKEN` | Bot token for the Telegram bot |
+| `TELEGRAM_BOT_TOKEN` | Bot token for the Telegram bot (from @BotFather) |
 | `TELEGRAM_CHAT_ID` | Target Scheduling chat ID |
 | `REMINDERS_FILE` | Path to `reminders.json` (default `/home/Schedule/reminders.json`) |
 | `DAEMON_STATE_FILE` | Weekly-digest bookkeeping (default `/home/Schedule/reminder_daemon_state.json`) |
